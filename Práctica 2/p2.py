@@ -22,19 +22,26 @@ class Process:
         color = [x.replace('0x', '') if len(x) == 4 else x.replace('x', '') for x in color ]
         return '#' + ''.join(color)
          
-
 class Graph:
 
     def __init__(self):
-        pass
+        self._fig, self._ax = plt.subplots()
+        plt.box(False)
+        self._ax.get_yaxis().set_visible(False)
+        plt.ylabel(ylabel='')
 
-def draw_bar(i):
-    for p in processes:
-        if i >= p._init:
-            ax.barh(p._id, p._age, color=p._color, capstyle='round', left=p._init)
-            p.run()
-    plt.pause(0.2)
-    plt.box(False)
+    def draw_bar(self, i):
+        for p in processes:
+            if i >= p._init:
+                self._ax.barh(p._id, p._age, color=p._color, capstyle='round', left=p._init)
+                p.run()
+        plt.pause(0.05)
+
+    def animate(self, long_lived, processes):
+        plt.xlim(0, long_lived, 1)
+        for i in range(long_lived):
+            animator = animation.FuncAnimation(self._fig, self.draw_bar)
+        plt.show()
 
 if __name__ == '__main__':
     long_lived = 0
@@ -51,13 +58,8 @@ if __name__ == '__main__':
                 long_lived = death
 
         elif opc == '2':
-            fig, ax = plt.subplots()
-            ax.get_yaxis().set_visible(False)
-            plt.xlim(0, long_lived, 1)
-            plt.ylabel(ylabel='')
-            for i in range(long_lived):
-                animator = animation.FuncAnimation(fig, draw_bar)
-            plt.show()
+            graph = Graph()
+            graph.animate(long_lived, processes)
             processes.clear()
         elif opc == '3':
             break
