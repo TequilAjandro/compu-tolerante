@@ -46,17 +46,18 @@ class Graph:
 
 class ProcessWindow:
 
-    def __init__(self):
-        self._width = 850
-        self._height = 850
+    def __init__(self, processes):
         self._root = tk.Tk()
+        self._root.geometry(('850x850'))
+        self._processes = processes
+        print(self._processes)
+        self._root.mainloop()
+
 
 class SetupWindow:
 
     def __init__(self):
         self._root = tk.Tk()
-        # self._width = 450
-        # self._height = 450
 
         self._input_frame = None
         self._confirmation_frame = None
@@ -135,51 +136,84 @@ class SetupWindow:
 
     # 
     def run_processes(self):
-        # Validación para campos vacios
-        try:
-            state, field, no = self.has_nulls()
-        except:
-            state = self.has_nulls()
+        while True:
+            if self.verify_all_field():
+                processes = zip(self._init_text_inputs, self._duration_text_inputs)
+                processes = [(int(init.get()), int(duration.get())) for init, duration in processes ]
+                # print(items)
+                # ordenarlos
+                # mandarlos junto con la cantidad de filas usadas
+                # crear nueva ventana
+                p = ProcessWindow(processes)
 
-        if state:
-            tk.messagebox.showwarning(title='Incompleto', message='Campo de '+ field +
-                                    ' número ' + str(no) + ' no llenado')
-        # Validación de cadenas
-        try:
-            state, field, no = self.has_string()
-        except:
-            state = self.has_string()
-        
-        if state:
-            tk.messagebox.showerror(title='Ingrese únicamente números positivos', message='Campo de '+ 
-                                    field + ' número ' + str(no) + ' con datos incorrectos')
-        
-        # Validación de rangos
 
-    def has_string(self):
+
+    def is_valid(self):
+        state = True
         for i, init in enumerate(self._init_text_inputs):
             try:
-                int(init.get())
-            except: 
-                return True, 'Inicio ', i+1
-
-        for i, duration in enumerate(self._duration_text_inputs):
-            try:
-                int(duration.get())
+                state, error, field, no = self.verify_field(init, 'Inicio', i+1)
+                return state, error, field, no
             except:
-                return True , 'Duración', i+1
-        return False
-
-
-    def has_nulls(self):
-        for i, init in enumerate(self._init_text_inputs):
-            if len(init.get()) == 0:
-                return True, 'Inicio ', i+1
-
+                state = self.verify_field(init, 'Inicio', i+1)
+            
         for i, duration in enumerate(self._duration_text_inputs):
-            if len(duration.get()) == 0:
-                return True , 'Duración', i+1
-        return False
+            try:
+                state, error, field, no = self.verify_field(duration, 'Duración', i+1)
+                return state, error, field, no
+            except:
+                state = self.verify_field(duration, 'Duración', i+1)
+        return state
+    
+    # 
+    def has_nulls(self, field):
+        return len(field.get()) == 0
+
+    def is_string(self, field):
+        try:
+            int(field.get())
+            return False
+        except: 
+            return True
+
+    def is_valid_number(self, init, duration, i):
+        if int(init.get()) <= 0 or int(duration.get()) <= 1:
+            return False, 'El inicio o la duración tienen que ser mayores a su valor actual', i
+        if int(init.get()) >= int(duration.get()):
+            return False, 'El inicio no puede ser mayor o igual a la duración', i
+        return True
+
+    def verify_field(self, field, name, i):
+        if self.has_nulls(field):
+            return False, 'está vacio', name, i
+        if self.is_string(field):
+            return False, 'tiene strings', name, i
+        return True
+    
+    def verify_all_field(self):
+        state = True
+        try:
+            state, error, field, no = self.is_valid()
+            tk.messagebox.showerror(title='Error', message='Campo de '+ 
+                                    field + ' número ' + str(no) + ' ' + error)
+            return False
+        except:
+            state = self.is_valid()
+            return True
+
+        if state:
+            for i, (init, duration) in enumerate(zip(self._init_text_inputs, self._duration_text_inputs)):
+                try:
+                    state, error, no = self.is_valid_number(init, duration, i+1)
+                    tk.messagebox.showerror(title='Error', message='Linea '+ ' número ' 
+                                            + str(no) + ': ' + error)
+                    return False
+                except:
+                    state = self.is_valid_number(init, duration, i+1)
+                    return True
+
+        def clear(self):
+            pass
 
 if __name__ == '__main__':
     # long_lived = 0
