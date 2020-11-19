@@ -2,6 +2,7 @@ import random
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import matplotlib.animation as animation
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
 
 class Process:
@@ -9,9 +10,11 @@ class Process:
     def __init__(self, id, init, life):
         self._id = id
         self._init = init
-        self._death = life+1
+        self._death = life
         self._age = self._init
         self._color = self.random_color()
+
+        # print(id, '\t', init, '\t', life)
 
     def run(self):
         if self._death > self._age:
@@ -25,34 +28,100 @@ class Process:
          
 class Graph:
 
-    def __init__(self):
+    def __init__(self, frame, long_lived, processes):
         self._fig, self._ax = plt.subplots()
+        self._canvas = FigureCanvasTkAgg(self._fig, master=frame)
+        self._long_lived = long_lived
+        self._processes = processes
+
+        self.setup_graph()
+
+    def setup_graph(self):
         plt.box(False)
         self._ax.get_yaxis().set_visible(False)
         plt.ylabel(ylabel='')
+        self._canvas.draw()
+        self._canvas.get_tk_widget().pack(fill='both', expand=1)
+        self._fig.patch.set_facecolor('#F0F0F0')
+        self._ax.patch.set_facecolor('#F0F0F0')
 
     def draw_bar(self, i):
-        for p in processes:
+        for p in self._processes:
             if i >= p._init:
                 self._ax.barh(p._id, p._age, color=p._color, capstyle='round', left=p._init)
                 p.run()
-        plt.pause(0.05)
+        # plt.pause(0.05)
 
-    def animate(self, long_lived, processes):
-        plt.xlim(0, long_lived, 1)
-        for i in range(long_lived):
+    def animate(self):
+        plt.xlim(0, self._long_lived, 1)
+        for i in range(self._long_lived):
             animator = animation.FuncAnimation(self._fig, self.draw_bar)
-        plt.show()
+        plt.close(self._fig)
+        self._canvas.draw()
+        # plt.show()
 
 class ProcessWindow:
 
     def __init__(self, processes):
         self._root = tk.Tk()
-        self._root.geometry(('850x850'))
         self._processes = processes
-        print(self._processes)
+         
+        self._title_frame = None
+        self._graph_frame = None
+        self._table_frame = None
+        self._button_frame = None
+
+        self._title_label = None
+        self._back_button = None   
+
+        # self.animate()
+        self.setup_window()
+        self.setup_title()
+        self.setup_button()
+
+        self.animate()
         self._root.mainloop()
 
+    def setup_window(self):
+        # Se definen aspectos de la ventana
+        self._root.geometry(('1420x700'))
+        self._root.resizable(width=False, height=False)
+        self._root.title('Administrador de procesos')
+        # Creación de frames
+        self._title_frame = tk.Frame(self._root, background="#F0F0F0", relief="flat")
+        self._graph_frame = tk.Frame(self._root, background="#F0F0F0", relief="flat")
+        self._table_frame = tk.Frame(self._root, background="#F0F0F0", relief="flat")
+        self._button_frame = tk.Frame(self._table_frame, background="#F0F0F0", relief="flat")
+        # Se define la posición de los frames
+        self._title_frame.grid(row=0, column=1, sticky="nsew", padx=2, pady=0)
+        self._graph_frame.grid(row=1, column=1, sticky="nsew", padx=2, pady=0)
+        self._table_frame.grid(row=1, column=0, sticky="nsew", padx=2, pady=0)
+        self._button_frame.grid(row=1, column=0, sticky="nsew", padx=2, pady=0)
+        # Definimos la estructura de la ventana principal: Filas y columna
+        self._root.grid_rowconfigure(0, weight=2)
+        self._root.grid_rowconfigure(1, weight=18)
+        self._root.grid_columnconfigure(0, weight=6)
+        self._root.grid_columnconfigure(1, weight=10)
+        self._table_frame.grid_rowconfigure(0, weight=18)
+        self._table_frame.grid_rowconfigure(1, weight=1)
+        self._table_frame.grid_columnconfigure(0, weight=50)
+
+    def setup_title(self):
+        self._title_label = tk.Label(self._title_frame, text='Añadir Ejecución procesos', font='Helvetica 32 bold', 
+                pady=10).pack(side='top')
+
+    def setup_button(self):
+        self._back_button = tk.Button(self._button_frame, font='Helvetica 32',text='Regresar')
+        self._back_button.pack(fill='both', expand=2)
+
+    def animate(self):
+        long_lived = 0
+        for x in self._processes:
+            if x[1] > long_lived:
+                long_lived = x[1]
+        self._processes = [Process(i, elem[0], elem[1]) for i, elem in enumerate(self._processes) ]
+        graph = Graph(self._graph_frame, long_lived, self._processes)
+        graph.animate()
 
 class SetupWindow:
 
@@ -140,12 +209,10 @@ class SetupWindow:
             if self.verify_all_field():
                 processes = zip(self._init_text_inputs, self._duration_text_inputs)
                 processes = [(int(init.get()), int(duration.get())) for init, duration in processes ]
-                # print(items)
                 # ordenarlos
                 # mandarlos junto con la cantidad de filas usadas
-                # crear nueva ventana
+                self.clear()
                 p = ProcessWindow(processes)
-
 
 
     def is_valid(self):
@@ -212,30 +279,12 @@ class SetupWindow:
                     state = self.is_valid_number(init, duration, i+1)
                     return True
 
-        def clear(self):
-            pass
+    def clear(self):
+        for init, duration in zip(self._init_text_inputs, self._duration_text_inputs):
+            init.delete(0, 'end')
+            duration.delete(0, 'end')
+
 
 if __name__ == '__main__':
-    # long_lived = 0
     processes = list()
-
-    # while True:
-    #     opc = input('1.- Agregar proceso\n2.- Correr procesos\n3.- Salir\n\nElija: ')
-    #     if opc == '1':
-    #         life = int(input())
-    #         death = int(input())
-    #         processes.append(Process(len(processes), life, death))
-            
-    #         if death > long_lived:
-    #             long_lived = death
-
-    #     elif opc == '2':
-    #         graph = Graph()
-    #         graph.animate(long_lived, processes)
-    #         processes.clear()
-    #     elif opc == '3':
-    #         break
-    #     else:
-    #         print('Todo meco el vato, pinche baboso')
-
-    alchl = SetupWindow()
+    window = SetupWindow()
