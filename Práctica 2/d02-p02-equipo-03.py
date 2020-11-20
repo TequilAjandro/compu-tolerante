@@ -14,8 +14,6 @@ class Process:
         self._age = self._init
         self._color = self.random_color()
 
-        # print(id, '\t', init, '\t', life)
-
     def run(self):
         if self._death > self._age:
             self._age += 1
@@ -25,7 +23,10 @@ class Process:
         color = [hex(x) for x in color]
         color = [x.replace('0x', '') if len(x) == 4 else x.replace('x', '') for x in color ]
         return '#' + ''.join(color)
-         
+    
+    def list(self):
+        return [self._id, self._init, self._death]
+
 class Graph:
 
     def __init__(self, frame, long_lived, processes):
@@ -50,7 +51,7 @@ class Graph:
             if i >= p._init:
                 self._ax.barh(p._id, p._age, color=p._color, capstyle='round', left=p._init)
                 p.run()
-        # plt.pause(0.05)
+        plt.pause(0.01)
 
     def animate(self):
         plt.xlim(0, self._long_lived, 1)
@@ -62,9 +63,13 @@ class Graph:
 
 class ProcessWindow:
 
-    def __init__(self, processes):
+    def __init__(self, processes, count_row):
         self._root = tk.Tk()
         self._processes = processes
+        self._count_row = count_row
+        self._long_lived = 0
+        self._y = 0
+        self._ordered = None
          
         self._title_frame = None
         self._graph_frame = None
@@ -74,12 +79,14 @@ class ProcessWindow:
         self._title_label = None
         self._back_button = None   
 
-        # self.animate()
         self.setup_window()
         self.setup_title()
         self.setup_button()
 
         self.animate()
+        self.create_processes_table()
+        self.create_ordered_processes_table()
+        self.time_label()
         self._root.mainloop()
 
     def setup_window(self):
@@ -89,8 +96,8 @@ class ProcessWindow:
         self._root.title('Administrador de procesos')
         # Creación de frames
         self._title_frame = tk.Frame(self._root, background="#F0F0F0", relief="flat")
-        self._graph_frame = tk.Frame(self._root, background="#F0F0F0", relief="flat")
-        self._table_frame = tk.Frame(self._root, background="#F0F0F0", relief="flat")
+        self._graph_frame = tk.Frame(self._root, background="#F0F0F0", relief="sunken")
+        self._table_frame = tk.Frame(self._root, background="#eeeeee", relief="sunken")
         self._button_frame = tk.Frame(self._table_frame, background="#F0F0F0", relief="flat")
         # Se define la posición de los frames
         self._title_frame.grid(row=0, column=1, sticky="nsew", padx=2, pady=0)
@@ -107,21 +114,84 @@ class ProcessWindow:
         self._table_frame.grid_columnconfigure(0, weight=50)
 
     def setup_title(self):
-        self._title_label = tk.Label(self._title_frame, text='Añadir Ejecución procesos', font='Helvetica 32 bold', 
+        self._title_label = tk.Label(self._title_frame, text='Ejecución de procesos', font='Helvetica 32 bold', 
                 pady=10).pack(side='top')
 
     def setup_button(self):
-        self._back_button = tk.Button(self._button_frame, font='Helvetica 32',text='Regresar')
+        self._back_button = tk.Button(self._button_frame, font='Helvetica 32', text='Regresar', command=self.quit)
         self._back_button.pack(fill='both', expand=2)
+        
+    def quit(self):
+        self._root.destroy()
+
+    def create_processes_table(self):
+        p_table = None
+        header = ['ID', 'Inicio', 'Duración']
+        x = 0
+        y = 28
+        tk.Label(self._table_frame, text='Tabla de procesos', font=('Arial', 15, 'bold')).place(x=x, y=0)
+        for j in range(3):
+            p_table = tk.Entry(self._table_frame, width=12, fg='black', font=('Arial', 15, 'bold'))
+            p_table.grid(row=0, column=j)
+            x += 52
+            p_table.place(x=x, y=28)
+            p_table.insert(tk.END, header[j])
+        x=0
+        for i in range(1, self._count_row+1):
+            y += 28
+            for j in range(3):
+                p_table = tk.Entry(self._table_frame, width=12, fg='black', font=('Arial', 15))
+                p_table.grid(row=i, column=j)
+                x += 52
+                p_table.place(x=x, y=y)
+                p_table.insert(tk.END, self._processes[i-1].list()[j])
+            x = 0
+        self._y = y
+
+    def create_ordered_processes_table(self):
+        self._ordered = self._processes
+        self._ordered.sort(key=lambda x: x._init)
+
+        p_table = None
+        header = ['ID', 'Inicio', 'Duración']
+        x = 0
+        y = self._y + 72
+        tk.Label(self._table_frame, text='Tabla de procesos en orden de ejecución', font=('Arial', 15, 'bold')).place(x=x, y=y)
+        y += 28
+        for j in range(3):
+            p_table = tk.Entry(self._table_frame, width=12, fg='black', font=('Arial', 15, 'bold'))
+            p_table.grid(row=0, column=j)
+            x += 52
+            p_table.place(x=x, y=y)
+            p_table.insert(tk.END, header[j])
+        x=0
+        for i in range(1, self._count_row+1):
+            y += 28
+            for j in range(3):
+                p_table = tk.Entry(self._table_frame, width=12, fg='black', font=('Arial', 15))
+                p_table.grid(row=i, column=j)
+                x += 52
+                p_table.place(x=x, y=y)
+                p_table.insert(tk.END, self._ordered[i-1].list()[j])
+            x = 0
+
+        self._y = y
+
+    def time_label(self):
+        time_label = None
+        longest = self._ordered
+        longest.sort(key=lambda x: x._death)
+        time_label = tk.Label(self._table_frame, text=str(longest[-1]._death), font=('Arial', 35, 'bold'))
+        time_label.place(x=100, y=self._y+80)
 
     def animate(self):
-        long_lived = 0
         for x in self._processes:
-            if x[1] > long_lived:
-                long_lived = x[1]
+            if x[1] > self._long_lived:
+                self._long_lived = x[1]
         self._processes = [Process(i, elem[0], elem[1]) for i, elem in enumerate(self._processes) ]
-        graph = Graph(self._graph_frame, long_lived, self._processes)
+        graph = Graph(self._graph_frame, self._long_lived, self._processes)
         graph.animate()
+        self._long_lived = 0
 
 class SetupWindow:
 
@@ -212,8 +282,9 @@ class SetupWindow:
                 # ordenarlos
                 # mandarlos junto con la cantidad de filas usadas
                 self.clear()
-                p = ProcessWindow(processes)
-
+                p = ProcessWindow(processes, self._count_row)
+                del(p)
+        self._root.destroy()
 
     def is_valid(self):
         state = True
